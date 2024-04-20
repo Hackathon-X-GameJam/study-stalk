@@ -23,6 +23,8 @@ if (flutterVersionName == null) {
 }
 
 android {
+    compileSdkVersion 33
+
     namespace "com.example.onsite"
     compileSdk flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
@@ -41,6 +43,8 @@ android {
     }
 
     defaultConfig {
+        targetSdkVersion 33
+
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId "com.example.onsite"
         // You can update the following values to match your application needs.

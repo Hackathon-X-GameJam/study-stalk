@@ -1,21 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-// import 'package:workmanager/workmanager.dart';
+import 'package:background_fetch/background_fetch.dart';
 
 void main() {
   runApp(const MyApp());
 
-  // Workmanager().initialize(
-  //   callbackDispatcher,
-  //   isInDebugMode: true, // Posts notification whenever the task is running
-  // );
-
-  // Workmanager().registerPeriodicTask(
-  //   "automatic-json-update",
-  //   "periodicUpdate",
-  //   existingWorkPolicy: ExistingWorkPolicy.replace,
-  //   frequency: const Duration(minutes: 15),
-  // );
+  // Register to receive BackgroundFetch events after app is terminated.
+  // Requires {stopOnTerminate: false, enableHeadless: true}
+  BackgroundFetch.registerHeadlessTask(backgroundFetchHeadlessTask);
 }
 
 class MyApp extends StatelessWidget {
@@ -56,6 +48,27 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String location = "Waiting for location...";
+
+  Future<void> initPlatformState() async {
+    // Configure options
+    BackgroundFetch.configure(
+        BackgroundFetchConfig(
+          minimumFetchInterval:
+              15, // <-- fetch interval in minutes; minimum is 15 minutes
+          stopOnTerminate: false,
+          enableHeadless: true,
+          startOnBoot: true,
+        ), (String taskId) {
+      print("Background Fetch event: $taskId");
+
+      // This is where you can perform the task
+      // For example, fetching data from the network
+
+      BackgroundFetch.finish(taskId);
+    }).catchError((e) {
+      print('Background Fetch failed to configure: $e');
+    });
+  }
 
   void _updateLocation() async {
     bool serviceEnabled;
@@ -194,3 +207,19 @@ void sendLocationToServer(String location) {
 //     return Future.value(true);
 //   });
 // }
+
+// [Android-only] This "Headless Task" is run when the Android app is terminated with `enableHeadless: true`
+// Be sure to annotate your callback function to avoid issues in release mode on Flutter >= 3.3.0
+@pragma('vm:entry-point')
+void backgroundFetchHeadlessTask(HeadlessTask task) {
+  var taskId = task.taskId;
+  if (task.timeout) {
+    BackgroundFetch.finish(taskId);
+    return;
+  }
+
+  // Place your code here to run when background fetch is executed
+  print('Background fetch event received.');
+
+  BackgroundFetch.finish(taskId);
+}
