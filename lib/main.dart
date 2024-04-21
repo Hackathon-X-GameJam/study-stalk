@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:background_fetch/background_fetch.dart';
-import 'package:http/http.dart' as http;
 import 'client.dart';
 
 void main() {
@@ -25,7 +24,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'StudyStalk'),
     );
   }
 }
@@ -50,6 +49,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   String location = "Location not yet fetched.";
+  String id = "Kenan";
 
   Future<void> initPlatformState() async {
     // Configure options
@@ -115,6 +115,7 @@ class _MyHomePageState extends State<MyHomePage> {
       setState(() {
         location = "${position.latitude}, ${position.longitude}";
       });
+      pushPosGps(id, position.longitude, position.latitude);
     } catch (e) {
       setState(() {
         location = "Failed to get location: $e";
@@ -133,29 +134,52 @@ class _MyHomePageState extends State<MyHomePage> {
         // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'Your coords:',
-            ),
-            Text(
-              location,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            Expanded(
-              child: UserListWidget(),
-            )
-          ],
+      body: Padding(
+        padding: const EdgeInsets.only(
+          top: 24,
+          left: 8,
+          right: 8,
+          bottom: 24,
+        ), // Added padding around the body content
+        child: Center(
+          // Center is a layout widget. It takes a single child and positions it
+          // in the middle of the parent.
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              const Padding(
+                padding: EdgeInsets.only(
+                  bottom: 8.0,
+                ), // Added padding below the text
+                child: Text('Your coords:',
+                    style: TextStyle(
+                      fontSize: 18,
+                    )),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(
+                  bottom: 16.0,
+                ), // Added padding below the location text
+                child: Text(
+                  location,
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ),
+              Expanded(
+                child: UserListWidget(),
+              )
+            ],
+          ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _updateLocation,
-        tooltip: 'Increment',
-        child: const Icon(Icons.refresh),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(
+            right: 16.0, bottom: 16.0), // Added padding around the FAB
+        child: FloatingActionButton(
+          onPressed: _updateLocation,
+          tooltip: 'Increment',
+          child: const Icon(Icons.refresh),
+        ),
       ),
     );
   }
@@ -179,13 +203,16 @@ class _UserListWidgetState extends State<UserListWidget> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('User Locations'),
+        backgroundColor: Theme.of(context)
+            .scaffoldBackgroundColor, // Matching the background color of the scaffold
+        elevation: 3, // A subtle shadow that creates a line effect
+        toolbarHeight: 2, // Minimal height to make it look like a line
       ),
       body: FutureBuilder<List<String>>(
         future: userListFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else {
@@ -196,30 +223,25 @@ class _UserListWidgetState extends State<UserListWidget> {
                 return FutureBuilder<String>(
                   future: getPos(userId),
                   builder: (context, positionSnapshot) {
-                    if (positionSnapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return Card(
-                        child: ListTile(
-                          leading: CircularProgressIndicator(),
-                          title: Text(userId),
-                          subtitle: Text('Fetching position...'),
-                        ),
-                      );
-                    } else if (positionSnapshot.hasError) {
-                      return Card(
-                        child: ListTile(
-                          title: Text(userId),
-                          subtitle: Text('Error fetching position'),
-                        ),
-                      );
-                    } else {
-                      return Card(
-                        child: ListTile(
-                          title: Text(userId),
-                          subtitle: Text(positionSnapshot.data!),
-                        ),
-                      );
-                    }
+                    Widget card = Card(
+                      child: ListTile(
+                        title: Text(userId),
+                        subtitle: positionSnapshot.connectionState ==
+                                ConnectionState.waiting
+                            ? const Text('Fetching position...')
+                            : positionSnapshot.hasError
+                                ? const Text('Error fetching position')
+                                : Text(positionSnapshot.data!),
+                      ),
+                    );
+                    return Padding(
+                      padding: const EdgeInsets.only(
+                        top: 20.0,
+                        right: 2.0,
+                        left: 2.0,
+                      ), // Adding 8 points of padding around the card
+                      child: card,
+                    );
                   },
                 );
               },
@@ -267,22 +289,6 @@ Future<Position> getLocationInBackground() async {
   }
 }
 
-void sendLocationToServer(String location) {
-  print("Sending location to server: $location");
-  // TODO: Implement sending location to server
-}
-
-// @pragma('vm:entry-point')
-// void callbackDispatcher() {
-//   Workmanager().executeTask((task, inputData) async {
-//     String location = "Unknown"; // TODO: remove initial value
-//     var position = await getLocationInBackground();
-//     location = "${position.latitude}, ${position.longitude}";
-//     sendLocationToServer(location);
-//     return Future.value(true);
-//   });
-// }
-
 // [Android-only] This "Headless Task" is run when the Android app is terminated with `enableHeadless: true`
 // Be sure to annotate your callback function to avoid issues in release mode on Flutter >= 3.3.0
 @pragma('vm:entry-point')
@@ -295,6 +301,8 @@ void backgroundFetchHeadlessTask(HeadlessTask task) {
 
   // Place your code here to run when background fetch is executed
   print('Background fetch event received.');
+
+  pushPos("Dominik", "Schlafend");
 
   BackgroundFetch.finish(taskId);
 }
