@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:background_fetch/background_fetch.dart';
+import 'package:http/http.dart' as http;
+import 'client.dart';
 
 void main() {
   runApp(const MyApp());
@@ -47,7 +49,7 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  String location = "Waiting for location...";
+  String location = "Location not yet fetched.";
 
   Future<void> initPlatformState() async {
     // Configure options
@@ -144,13 +146,86 @@ class _MyHomePageState extends State<MyHomePage> {
               location,
               style: Theme.of(context).textTheme.headlineMedium,
             ),
+            Expanded(
+              child: UserListWidget(),
+            )
           ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _updateLocation,
         tooltip: 'Increment',
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.refresh),
+      ),
+    );
+  }
+}
+
+class UserListWidget extends StatefulWidget {
+  @override
+  _UserListWidgetState createState() => _UserListWidgetState();
+}
+
+class _UserListWidgetState extends State<UserListWidget> {
+  Future<List<String>>? userListFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    userListFuture = getAllUsers(); // Fetch all users only once
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('User Locations'),
+      ),
+      body: FutureBuilder<List<String>>(
+        future: userListFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else {
+            return ListView.builder(
+              itemCount: snapshot.data!.length,
+              itemBuilder: (context, index) {
+                String userId = snapshot.data![index];
+                return FutureBuilder<String>(
+                  future: getPos(userId),
+                  builder: (context, positionSnapshot) {
+                    if (positionSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return Card(
+                        child: ListTile(
+                          leading: CircularProgressIndicator(),
+                          title: Text(userId),
+                          subtitle: Text('Fetching position...'),
+                        ),
+                      );
+                    } else if (positionSnapshot.hasError) {
+                      return Card(
+                        child: ListTile(
+                          title: Text(userId),
+                          subtitle: Text('Error fetching position'),
+                        ),
+                      );
+                    } else {
+                      return Card(
+                        child: ListTile(
+                          title: Text(userId),
+                          subtitle: Text(positionSnapshot.data!),
+                        ),
+                      );
+                    }
+                  },
+                );
+              },
+            );
+          }
+        },
       ),
     );
   }
